@@ -14,6 +14,11 @@ const MOCK_DATA: IBillingInvoice = {
     code: '123-45-67890',
     ceo: '홍길동',
     email: 'test@example.com',
+    businessType: '서비스업',
+    businessItem: '소프트웨어 개발',
+    invoiceStatus: '사용',
+    modifier: 'admin',
+    modifiedAt: '2024-03-01T00:00:00Z'
   },
   email: 'invoice@example.com',
   billing_month: '2024-03',

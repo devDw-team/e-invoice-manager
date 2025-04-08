@@ -2,22 +2,28 @@ import { IVendor, IVendorForm } from '@/types';
 
 export const mockVendors: IVendor[] = [
   {
-    id: 1,
+    id: '1',
     name: '코웨이',
     code: '1234567890',
     ceo: '홍길동',
     businessType: '제조업',
     businessItem: '가전제품',
-    isInvoiceEnabled: true,
+    invoiceStatus: '사용',
+    modifier: 'admin',
+    modifiedAt: '2024-03-01T00:00:00Z',
+    email: 'contact@coway.com'
   },
   {
-    id: 2,
+    id: '2',
     name: '삼성전자',
     code: '9876543210',
     ceo: '김철수',
     businessType: '제조업',
     businessItem: '전자제품',
-    isInvoiceEnabled: true,
+    invoiceStatus: '사용',
+    modifier: 'admin',
+    modifiedAt: '2024-03-01T00:00:00Z',
+    email: 'contact@samsung.com'
   },
 ];
 

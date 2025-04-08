@@ -91,7 +91,7 @@ const columns: ColumnDef<IBillingInvoice>[] = [
     header: '발송 여부',
     cell: ({ row }) => {
       const status = row.original.status;
-      const variant = status === 'success' ? 'success' : status === 'fail' ? 'destructive' : 'secondary';
+      const variant = status === 'success' ? 'default' : status === 'fail' ? 'destructive' : 'secondary';
       const label = status === 'success' ? '성공' : status === 'fail' ? '실패' : '미발송';
       
       return <Badge variant={variant}>{label}</Badge>;

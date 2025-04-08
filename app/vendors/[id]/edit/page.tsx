@@ -8,10 +8,10 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
-import { mockVendors } from '@/_mocks/vendors'
 import { IVendor } from '@/types'
 import { toast } from 'sonner'
 import { LNB } from '@/components/layout/lnb'
+import { vendorApi } from '@/utils/api'
 
 interface Props {
   params: Promise<{
@@ -23,23 +23,44 @@ export default function VendorEditPage({ params }: Props) {
   const router = useRouter()
   const { id } = use(params)
   const isEdit = id !== 'new'
+  const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState<Partial<IVendor>>({
     invoiceStatus: '사용',
     name: '',
     code: '',
     ceo: '',
     businessType: '',
-    businessItem: ''
+    item: '',
+    address: ''
   })
 
+  // 기존 데이터 조회
   useEffect(() => {
     if (isEdit) {
-      const vendor = mockVendors.find(v => String(v.id) === id)
-      if (vendor) {
-        setFormData(vendor)
-      }
+      fetchVendor()
     }
   }, [isEdit, id])
+
+  const fetchVendor = async () => {
+    try {
+      setLoading(true)
+      const response = await vendorApi.getVendors({
+        searchField: 'code',
+        searchValue: id,
+      })
+      if (response.data.length > 0) {
+        setFormData(response.data[0])
+      } else {
+        toast.error('존재하지 않는 사업자입니다.')
+        router.push('/vendors')
+      }
+    } catch (error) {
+      toast.error('사업자 정보를 불러오는데 실패했습니다.')
+      router.push('/vendors')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const handleChange = (field: keyof IVendor, value: string) => {
     if (field === 'code' && isEdit) return // 수정 모드에서는 사업자번호 변경 불가
@@ -51,7 +72,7 @@ export default function VendorEditPage({ params }: Props) {
     }))
   }
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     // 유효성 검사
     if (!formData.name) {
       toast.error('사업자명을 입력해주세요.')
@@ -62,9 +83,40 @@ export default function VendorEditPage({ params }: Props) {
       return
     }
 
-    // 실제로는 API 호출
-    toast.success('저장되었습니다.')
-    router.push('/vendors')
+    try {
+      setLoading(true)
+      if (isEdit) {
+        if (!formData.name || !formData.invoiceStatus) {
+          toast.error('필수 정보가 누락되었습니다.')
+          return
+        }
+        await vendorApi.updateVendor(Number(id), {
+          id: Number(id),
+          name: formData.name,
+          invoiceStatus: formData.invoiceStatus,
+          ceo: formData.ceo ?? '',
+          address: formData.address ?? '',
+          businessType: formData.businessType ?? '',
+          item: formData.item ?? '',
+          modifier: 'admin', // TODO: 실제 사용자 ID로 대체
+        })
+      } else {
+        await vendorApi.createVendor({
+          ...formData as any, // TODO: 타입 수정 필요
+          modifier: 'admin', // TODO: 실제 사용자 ID로 대체
+        })
+      }
+      toast.success('저장되었습니다.')
+      router.push('/vendors')
+    } catch (error: any) {
+      if (error.message === 'Business code already exists') {
+        toast.error('이미 등록된 사업자번호입니다.')
+      } else {
+        toast.error('저장에 실패했습니다.')
+      }
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -110,7 +162,7 @@ export default function VendorEditPage({ params }: Props) {
               <Input
                 value={formData.code ?? ''}
                 onChange={(e) => handleChange('code', e.target.value)}
-                maxLength={100}
+                maxLength={20}
                 disabled={isEdit}
               />
             </div>
@@ -129,9 +181,8 @@ export default function VendorEditPage({ params }: Props) {
             <div className="space-y-2">
               <label className="text-sm font-medium">사업장 주소</label>
               <Textarea
-                value={formData.businessType ?? ''}
-                onChange={(e) => handleChange('businessType', e.target.value)}
-                maxLength={100}
+                value={formData.address ?? ''}
+                onChange={(e) => handleChange('address', e.target.value)}
               />
             </div>
 
@@ -149,8 +200,8 @@ export default function VendorEditPage({ params }: Props) {
             <div className="space-y-2">
               <label className="text-sm font-medium">종목</label>
               <Input
-                value={formData.businessItem ?? ''}
-                onChange={(e) => handleChange('businessItem', e.target.value)}
+                value={formData.item ?? ''}
+                onChange={(e) => handleChange('item', e.target.value)}
                 maxLength={100}
               />
             </div>
@@ -176,7 +227,9 @@ export default function VendorEditPage({ params }: Props) {
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
-              <Button onClick={handleSubmit}>저장</Button>
+              <Button onClick={handleSubmit} disabled={loading}>
+                {loading ? '저장 중...' : '저장'}
+              </Button>
             </div>
           </div>
         </div>

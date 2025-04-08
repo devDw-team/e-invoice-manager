@@ -99,7 +99,7 @@
 | **Method** | `GET` |
 | **Query Params** | |
 
-* `invoiceStatus`: `all` / `used` / `unused`
+* `invoiceStatus`: `all` / `사용` / `미사용` (schema의 invoiceStatusEnum 타입 반영)
 * `searchField`: `name`, `code`, `ceo`
 * `searchValue`: string
 * `page`: number (default: 1)
@@ -115,11 +115,13 @@
       "name": "코웨이",
       "code": "1234567890",
       "ceo": "홍길동",
+      "address": "서울시 중구 을지로 123",
       "businessType": "서비스업",
       "item": "렌탈",
       "invoiceStatus": "사용",
       "modifier": "admin01",
-      "modifiedAt": "2024.03.11 14:20"
+      "modifiedAt": "2024.03.11 14:20",
+      "createdAt": "2024.03.10 09:30"
     }
   ],
   "total": 112,
@@ -136,9 +138,20 @@
 | --- | --- |
 | **경로** | `/api/vendors` |
 | **Method** | `POST` |
-| **Body** | |
+| **Request Body** | |
 
-* `invoiceStatus`, `name`, `code`, `ceo`, `address`, `businessType`, `item`, `modifier`
+```typescript
+{
+  name: string;        // 필수, 100자 제한
+  code: string;        // 필수, 20자 제한, unique
+  ceo?: string;        // 선택, 100자 제한
+  address?: string;    // 선택
+  businessType?: string; // 선택, 100자 제한
+  item?: string;       // 선택, 100자 제한
+  invoiceStatus: "사용" | "미사용"; // 필수, 기본값 "사용"
+  modifier: string;    // 필수, 50자 제한
+}
+```
 
 * * *
 
@@ -146,25 +159,38 @@
 
 | 항목 | 설명 |
 | --- | --- |
-| **경로** | `/api/vendors` |
+| **경로** | `/api/vendors/{id}` |
 | **Method** | `PUT` |
-| **Body** | |
+| **Request Body** | |
 
-* 위와 동일 + `id`
+```typescript
+{
+  id: number;         // 필수, path parameter로 전달
+  name: string;       // 필수, 100자 제한
+  ceo?: string;       // 선택, 100자 제한
+  address?: string;   // 선택
+  businessType?: string; // 선택, 100자 제한
+  item?: string;      // 선택, 100자 제한
+  invoiceStatus: "사용" | "미사용"; // 필수
+  modifier: string;   // 필수, 50자 제한
+}
+```
 
 * * *
 
 ### 4. 📡 청구서 생성 여부 일괄 변경 API
 
-| 경로 | `/api/vendors/invoice-status` |
+| 항목 | 설명 |
 | --- | --- |
-| Method | `PUT` |
-| Body 예시 |
+| **경로** | `/api/vendors/invoice-status` |
+| **Method** | `PUT` |
+| **Request Body** | |
 
-```json
+```typescript
 {
-  "vendorIds": [1, 2, 3],
-  "status": "사용"
+  vendorIds: number[];  // 변경할 사업자 ID 배열
+  invoiceStatus: "사용" | "미사용";  // schema의 invoiceStatusEnum 타입 반영
+  modifier: string;     // 수정자 ID (50자 제한)
 }
 ```
 
@@ -174,16 +200,25 @@
 
 | 컬럼 | 타입 | 설명 |
 | --- | --- | --- |
-| `id` | number | PK |
-| `name` | string | 100자 제한 |
-| `code` | string | unique |
-| `ceo` | string | 100자 제한 |
-| `address` | string | 줄바꿈 포함 가능 |
-| `business_type` | string | 업태 |
-| `item` | string | 종목 |
-| `invoice_status` | enum | `사용` / `미사용` |
-| `modifier` | string | 관리자 ID |
-| `modified_at` | datetime | 최종 수정 시각 |
+| `id` | serial | PK, auto increment |
+| `name` | varchar(100) | 사업자명 (NOT NULL) |
+| `code` | varchar(20) | 사업자번호 (NOT NULL, UNIQUE) |
+| `ceo` | varchar(100) | 대표자명 |
+| `address` | text | 사업장 주소 |
+| `business_type` | varchar(100) | 업태 |
+| `item` | varchar(100) | 종목 |
+| `invoice_status` | enum | `사용` / `미사용` (NOT NULL, DEFAULT '사용') |
+| `modifier` | varchar(50) | 수정자 ID (NOT NULL) |
+| `modified_at` | timestamp | 최종 수정 시각 (DEFAULT CURRENT_TIMESTAMP) |
+| `created_at` | timestamp | 생성 시각 (DEFAULT CURRENT_TIMESTAMP) |
+
+주요 변경사항:
+1. 스키마의 정확한 필드 타입과 길이 제한 반영
+2. NOT NULL 제약조건 명시
+3. 응답/요청 데이터에 누락된 필드 추가 (address, createdAt 등)
+4. enum 타입의 정확한 값 반영 ('사용'/'미사용')
+5. API 엔드포인트 구조 개선 (PUT 메서드의 경우 리소스 ID를 path parameter로 변경)
+6. 각 필드의 제약조건 상세 명시
 
 * * *
 

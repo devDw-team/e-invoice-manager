@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
@@ -11,48 +11,73 @@ import { mockVendors } from '@/_mocks/vendors'
 import { IVendor } from '@/types'
 import { toast } from 'sonner'
 import { LNB } from '@/components/layout/lnb'
+import { vendorApi } from '@/utils/api'
+import { format } from 'date-fns'
 
 export default function VendorsPage() {
   const router = useRouter()
-  const [selectedVendors, setSelectedVendors] = useState<string[]>([])
-  const [invoiceStatus, setInvoiceStatus] = useState<string>('all')
-  const [searchField, setSearchField] = useState<string>('name')
-  const [searchValue, setSearchValue] = useState<string>('')
-  const [limit, setLimit] = useState<number>(50)
+  const searchParams = useSearchParams()
+  
+  // 상태 관리
+  const [vendors, setVendors] = useState<IVendor[]>([])
+  const [total, setTotal] = useState(0)
+  const [loading, setLoading] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<number[]>([])
+  
+  // 검색 조건
+  const [searchField, setSearchField] = useState<'name' | 'code' | 'ceo'>('name')
+  const [searchValue, setSearchValue] = useState('')
+  const [invoiceStatus, setInvoiceStatus] = useState<'all' | '사용' | '미사용'>('all')
+  const [page, setPage] = useState(1)
+  const [limit, setLimit] = useState(50)
 
-  // 체크박스 전체 선택/해제
-  const handleSelectAll = (checked: boolean | string) => {
-    if (checked === true) {
-      setSelectedVendors(mockVendors.map(vendor => vendor.id))
-    } else {
-      setSelectedVendors([])
+  // 데이터 조회
+  const fetchVendors = async () => {
+    try {
+      setLoading(true)
+      const response = await vendorApi.getVendors({
+        page,
+        limit,
+        searchField,
+        searchValue,
+        invoiceStatus,
+      })
+      setVendors(response.data)
+      setTotal(response.total)
+    } catch (error) {
+      toast.error("사업자 목록을 불러오는데 실패했습니다.")
+    } finally {
+      setLoading(false)
     }
   }
 
-  // 개별 체크박스 선택/해제
-  const handleSelectOne = (checked: boolean | string, id: string) => {
-    if (checked === true) {
-      setSelectedVendors(prev => [...prev, id])
-    } else {
-      setSelectedVendors(prev => prev.filter(vendorId => vendorId !== id))
-    }
-  }
-
-  // 일괄 처리 - 청구서 생성 여부 변경
-  const handleBulkUpdate = (status: '사용' | '미사용') => {
-    if (selectedVendors.length === 0) {
-      toast.error('선택된 사업자가 없습니다.')
+  // 일괄 상태 변경
+  const handleBulkStatusUpdate = async (newStatus: '사용' | '미사용') => {
+    if (selectedIds.length === 0) {
+      toast.warning("선택된 사업자가 없습니다.")
       return
     }
-    
-    // 실제로는 API 호출
-    toast.success('선택한 사업자의 청구서 생성 여부가 변경되었습니다.')
+
+    try {
+      await vendorApi.bulkUpdateStatus({
+        vendorIds: selectedIds,
+        invoiceStatus: newStatus,
+        modifier: 'admin', // TODO: 실제 사용자 ID로 대체
+      })
+
+      toast.success("선택된 사업자의 상태가 변경되었습니다.")
+
+      fetchVendors()
+      setSelectedIds([])
+    } catch (error) {
+      toast.error("상태 변경에 실패했습니다.")
+    }
   }
 
-  // 텍스트 말줄임 처리
-  const truncateText = (text: string, maxLength: number = 10) => {
-    return text.length > maxLength ? `${text.slice(0, maxLength)}...` : text
-  }
+  // 검색 조건 변경 시 데이터 재조회
+  useEffect(() => {
+    fetchVendors()
+  }, [page, limit, searchField, searchValue, invoiceStatus])
 
   return (
     <div className="flex min-h-screen">
@@ -65,18 +90,18 @@ export default function VendorsPage() {
 
         {/* 검색 조건 */}
         <div className="flex gap-4 mb-6">
-          <Select value={invoiceStatus} onValueChange={setInvoiceStatus}>
+          <Select value={invoiceStatus} onValueChange={(value: any) => setInvoiceStatus(value)}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="청구서 생성 여부" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">전체</SelectItem>
-              <SelectItem value="used">사용</SelectItem>
-              <SelectItem value="unused">미사용</SelectItem>
+              <SelectItem value="사용">사용</SelectItem>
+              <SelectItem value="미사용">미사용</SelectItem>
             </SelectContent>
           </Select>
 
-          <Select value={searchField} onValueChange={setSearchField}>
+          <Select value={searchField} onValueChange={(value: any) => setSearchField(value)}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="검색 기준" />
             </SelectTrigger>
@@ -97,7 +122,7 @@ export default function VendorsPage() {
 
         {/* 일괄 처리 */}
         <div className="flex gap-4 mb-6">
-          <Select onValueChange={(value) => handleBulkUpdate(value as '사용' | '미사용')}>
+          <Select onValueChange={(value: '사용' | '미사용') => handleBulkStatusUpdate(value)}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="청구서 생성 여부 변경" />
             </SelectTrigger>
@@ -115,8 +140,10 @@ export default function VendorsPage() {
               <TableRow>
                 <TableHead className="w-[50px]">
                   <Checkbox
-                    checked={selectedVendors.length === mockVendors.length}
-                    onCheckedChange={handleSelectAll}
+                    checked={selectedIds.length === vendors.length}
+                    onCheckedChange={(checked) => {
+                      setSelectedIds(checked ? vendors.map(v => v.id) : [])
+                    }}
                   />
                 </TableHead>
                 <TableHead className="w-[80px]">No</TableHead>
@@ -130,38 +157,51 @@ export default function VendorsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {mockVendors.map((vendor) => (
-                <TableRow key={vendor.id}>
-                  <TableCell>
-                    <Checkbox
-                      checked={selectedVendors.includes(vendor.id)}
-                      onCheckedChange={(checked) => handleSelectOne(checked, vendor.id)}
-                    />
+              {vendors.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
+                    등록된 사업자가 없습니다.
                   </TableCell>
-                  <TableCell>{vendor.id}</TableCell>
-                  <TableCell>
-                    <button
-                      onClick={() => router.push(`/vendors/${vendor.id}/edit`)}
-                      className="text-blue-600 hover:underline"
-                    >
-                      {vendor.name}
-                    </button>
-                  </TableCell>
-                  <TableCell>
-                    <button
-                      onClick={() => router.push(`/vendors/${vendor.id}/edit`)}
-                      className="text-blue-600 hover:underline"
-                    >
-                      {vendor.code}
-                    </button>
-                  </TableCell>
-                  <TableCell>{vendor.ceo}</TableCell>
-                  <TableCell>{truncateText(`${vendor.businessType} / ${vendor.businessItem}`)}</TableCell>
-                  <TableCell>{vendor.invoiceStatus}</TableCell>
-                  <TableCell>{vendor.modifier}</TableCell>
-                  <TableCell>{vendor.modifiedAt}</TableCell>
                 </TableRow>
-              ))}
+              ) : (
+                vendors.map((vendor) => (
+                  <TableRow key={vendor.id}>
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedIds.includes(vendor.id)}
+                        onCheckedChange={(checked) => {
+                          setSelectedIds(
+                            checked
+                              ? [...selectedIds, vendor.id]
+                              : selectedIds.filter(id => id !== vendor.id)
+                          )
+                        }}
+                      />
+                    </TableCell>
+                    <TableCell>{vendor.id}</TableCell>
+                    <TableCell>
+                      <button
+                        onClick={() => router.push(`/vendors/${vendor.id}/edit`)}
+                        className="text-blue-600 hover:underline"
+                      >
+                        {vendor.name}
+                      </button>
+                    </TableCell>
+                    <TableCell>{vendor.code}</TableCell>
+                    <TableCell>{vendor.ceo}</TableCell>
+                    <TableCell>
+                      {vendor.businessType && vendor.item
+                        ? `${vendor.businessType} / ${vendor.item}`
+                        : vendor.businessType || vendor.item}
+                    </TableCell>
+                    <TableCell>{vendor.invoiceStatus}</TableCell>
+                    <TableCell>{vendor.modifier}</TableCell>
+                    <TableCell>
+                      {format(new Date(vendor.modifiedAt), 'yyyy.MM.dd HH:mm')}
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </div>

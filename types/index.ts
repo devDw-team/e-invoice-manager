@@ -1,14 +1,46 @@
+import { invoiceStatusEnum } from '@/db/schema';
+
 export interface IVendor {
-  id: string;
+  id: number;
   name: string;
   code: string;
-  ceo: string;
-  email: string;
-  businessType: string;
-  businessItem: string;
-  invoiceStatus: '사용' | '미사용';
+  ceo?: string;
+  address?: string;
+  businessType?: string;
+  item?: string;
+  invoiceStatus: typeof invoiceStatusEnum.enumValues[number];
   modifier: string;
-  modifiedAt: string;
+  modifiedAt: Date;
+  createdAt: Date;
+}
+
+export interface IVendorCreate {
+  name: string;
+  code: string;
+  ceo?: string;
+  address?: string;
+  businessType?: string;
+  item?: string;
+  invoiceStatus: typeof invoiceStatusEnum.enumValues[number];
+  modifier: string;
+}
+
+export interface IVendorUpdate extends Omit<IVendorCreate, 'code'> {
+  id: number;
+}
+
+export interface IVendorBulkStatusUpdate {
+  vendorIds: number[];
+  invoiceStatus: typeof invoiceStatusEnum.enumValues[number];
+  modifier: string;
+}
+
+export interface IPaginationQuery {
+  page?: number;
+  limit?: number;
+  searchField?: 'name' | 'code' | 'ceo';
+  searchValue?: string;
+  invoiceStatus?: typeof invoiceStatusEnum.enumValues[number] | 'all';
 }
 
 export interface IBillingInvoice {
