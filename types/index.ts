@@ -84,50 +84,18 @@ export interface IBillingLog {
   type: 'test' | 'real' | 'resend';
 }
 
-export interface ISearchParams {
-  fromDate: string;
-  toDate: string;
-  searchField: 'name' | 'code' | 'ceo' | 'email';
-  searchValue: string;
-  status: 'all' | 'not_sent' | 'success' | 'fail';
-  page: number;
-  limit: number;
-}
-
-export interface IPaginatedResponse<T> {
-  items: T[];
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
-}
-
-export interface IVendorSearchParams {
-  invoiceStatus: 'all' | 'used' | 'unused'
-  searchField: 'name' | 'code' | 'ceo'
-  searchValue: string
-  page: number
-  limit: number
-}
-
-export interface IVendorResponse {
-  data: IVendor[]
-  total: number
-  page: number
-  limit: number
-}
-
 export interface IVendorContact {
-  id: number;
-  vendorName: string;
-  vendorCode: string;
-  branch: string;
+  id?: number;
+  vendorId: number;
+  vendorName?: string;
+  vendorCode?: string;
+  branch?: string;
   email: string;
   status: '사용' | '미사용';
-  createdBy: string;
-  createdAt: string;
-  updatedBy: string;
-  updatedAt: string;
+  createdBy?: string;
+  createdAt?: string;
+  updatedBy?: string;
+  updatedAt?: string;
 }
 
 export interface IVendorContactsResponse {
@@ -232,6 +200,28 @@ export interface IInvoiceFileSearchParams {
 export interface IInvoiceFileResponse {
   data: IInvoiceFile[];
   total: number;
+  page: number;
+  limit: number;
+}
+
+export interface IVendor {
+  id: number;
+  vendorCode: string;
+  vendorName: string;
+  representativeName: string;
+  status: string;
+}
+
+export interface IPaginationResponse<T> {
+  data: T[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export interface ISearchParams {
+  searchField: 'name' | 'code';
+  searchValue: string;
   page: number;
   limit: number;
 } 

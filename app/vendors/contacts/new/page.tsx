@@ -19,47 +19,70 @@ import { Button } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { IVendorContactFormData } from '@/types';
+import VendorSearchDialog from '@/components/vendors/VendorSearchDialog';
+import { IVendor, IVendorContact } from '@/types';
 
-export default function ContactNewPage() {
+export default function ContactNewForm() {
   const router = useRouter();
-  const [showExitDialog, setShowExitDialog] = useState(false);
-  const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [showVendorSearch, setShowVendorSearch] = useState(false);
+  const [showExitAlert, setShowExitAlert] = useState(false);
+  const [showSaveAlert, setShowSaveAlert] = useState(false);
 
-  // 폼 상태 관리
-  const [formData, setFormData] = useState<IVendorContactFormData>({
+  const [formData, setFormData] = useState<IVendorContact>({
     vendorId: 0,
+    vendorName: '',
+    vendorCode: '',
     branch: '',
     email: '',
     status: '사용',
   });
 
-  // 유효성 검사
-  const validateForm = () => {
+  const handleVendorSelect = (vendor: IVendor) => {
+    setFormData({
+      ...formData,
+      vendorId: vendor.id,
+      vendorName: vendor.vendorName,
+      vendorCode: vendor.vendorCode,
+    });
+  };
+
+  const handleSubmit = async () => {
+    // 유효성 검사
     if (!formData.vendorId) {
       toast.error("'사업자 찾기'를 통해 사업자 정보를 입력해주세요.");
-      return false;
+      return;
     }
     if (!formData.email) {
       toast.error('이메일을 입력해주세요.');
-      return false;
+      return;
     }
     if (formData.branch && formData.branch.length > 30) {
       toast.error('지점명은 30자를 초과할 수 없습니다.');
-      return false;
+      return;
     }
-    return true;
-  };
 
-  // 저장 처리
-  const handleSave = () => {
-    if (!validateForm()) return;
-    setShowSaveDialog(true);
-  };
+    try {
+      setLoading(true);
+      const response = await fetch('/api/vendor-contacts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
 
-  const handleConfirmSave = () => {
-    // 실제로는 API 호출이 필요하지만, 목업에서는 토스트 메시지만 표시
-    toast.success('저장이 완료되었습니다.');
-    router.push('/vendors/contacts');
+      if (!response.ok) {
+        throw new Error('저장 중 오류가 발생했습니다.');
+      }
+
+      router.push('/vendors/contacts');
+    } catch (error) {
+      console.error('저장 중 오류:', error);
+      toast.error('저장 중 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -72,34 +95,28 @@ export default function ContactNewPage() {
           <div className="space-y-6">
             {/* 사업자 선택 */}
             <div className="space-y-2">
-              <Label>사업자 선택</Label>
+              <Label>사업자 정보</Label>
               <div className="flex gap-2">
                 <Input
-                  placeholder="사업자 찾기를 클릭하세요"
-                  value={formData.vendorId ? '테스트 사업자' : ''}
+                  value={formData.vendorName}
+                  placeholder="사업자명"
                   readOnly
-                  className="bg-gray-100"
+                  className="bg-gray-50"
+                />
+                <Input
+                  value={formData.vendorCode}
+                  placeholder="사업자번호"
+                  readOnly
+                  className="bg-gray-50"
                 />
                 <Button
-                  variant="outline"
-                  onClick={() => {
-                    // 실제로는 사업자 검색 팝업을 띄워야 함
-                    setFormData({ ...formData, vendorId: 123 });
-                  }}
+                  type="button"
+                  onClick={() => setShowVendorSearch(true)}
+                  disabled={loading}
                 >
                   사업자 찾기
                 </Button>
               </div>
-            </div>
-
-            {/* 사업자번호 */}
-            <div className="space-y-2">
-              <Label>사업자번호</Label>
-              <Input
-                value={formData.vendorId ? '123-45-67890' : ''}
-                readOnly
-                className="bg-gray-100"
-              />
             </div>
 
             {/* 지점명 */}
@@ -108,8 +125,9 @@ export default function ContactNewPage() {
               <Input
                 value={formData.branch}
                 onChange={(e) => setFormData({ ...formData, branch: e.target.value })}
+                placeholder="지점명 입력 (선택, 30자 이내)"
                 maxLength={30}
-                placeholder="지점명 입력 (선택)"
+                disabled={loading}
               />
             </div>
 
@@ -119,9 +137,10 @@ export default function ContactNewPage() {
               <Input
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                maxLength={30}
-                placeholder="이메일 입력 (필수)"
+                placeholder="이메일 주소 입력"
+                type="email"
                 required
+                disabled={loading}
               />
             </div>
 
@@ -134,6 +153,7 @@ export default function ContactNewPage() {
                   setFormData({ ...formData, status: value })
                 }
                 className="flex gap-4"
+                disabled={loading}
               >
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="사용" id="use" />
@@ -148,15 +168,31 @@ export default function ContactNewPage() {
 
             {/* 버튼 영역 */}
             <div className="flex justify-end gap-2 pt-4">
-              <Button variant="outline" onClick={() => setShowExitDialog(true)}>
+              <Button
+                variant="outline"
+                onClick={() => setShowExitAlert(true)}
+                disabled={loading}
+              >
                 목록
               </Button>
-              <Button onClick={handleSave}>저장</Button>
+              <Button
+                onClick={() => setShowSaveAlert(true)}
+                disabled={loading}
+              >
+                저장
+              </Button>
             </div>
           </div>
 
-          {/* 나가기 확인 다이얼로그 */}
-          <AlertDialog open={showExitDialog} onOpenChange={setShowExitDialog}>
+          {/* 사업자 찾기 팝업 */}
+          <VendorSearchDialog
+            open={showVendorSearch}
+            onClose={() => setShowVendorSearch(false)}
+            onSelect={handleVendorSelect}
+          />
+
+          {/* 목록 이동 확인 */}
+          <AlertDialog open={showExitAlert} onOpenChange={setShowExitAlert}>
             <AlertDialogContent>
               <AlertDialogHeader>
                 <AlertDialogTitle>목록으로 이동</AlertDialogTitle>
@@ -173,8 +209,8 @@ export default function ContactNewPage() {
             </AlertDialogContent>
           </AlertDialog>
 
-          {/* 저장 확인 다이얼로그 */}
-          <AlertDialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
+          {/* 저장 확인 */}
+          <AlertDialog open={showSaveAlert} onOpenChange={setShowSaveAlert}>
             <AlertDialogContent>
               <AlertDialogHeader>
                 <AlertDialogTitle>저장 확인</AlertDialogTitle>
@@ -184,7 +220,7 @@ export default function ContactNewPage() {
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>취소</AlertDialogCancel>
-                <AlertDialogAction onClick={handleConfirmSave}>
+                <AlertDialogAction onClick={handleSubmit}>
                   저장
                 </AlertDialogAction>
               </AlertDialogFooter>
