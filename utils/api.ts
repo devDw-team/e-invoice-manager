@@ -1,4 +1,4 @@
-import { IVendorCreate, IVendorUpdate, IVendorBulkStatusUpdate } from '@/types';
+import { IVendorCreate, IVendorUpdate, IVendorBulkStatusUpdate, IVendor } from '@/types';
 
 // API 응답 타입 정의
 export interface ApiResponse<T> {
@@ -71,5 +71,13 @@ export const vendorApi = {
       throw new Error(error.error || 'Failed to bulk update status');
     }
     return response.json();
+  },
+
+  getVendor: async (id: number): Promise<IVendor> => {
+    const response = await fetch(`/api/vendors/${id}`)
+    if (!response.ok) {
+      throw new Error('Failed to fetch vendor')
+    }
+    return response.json()
   },
 }; 

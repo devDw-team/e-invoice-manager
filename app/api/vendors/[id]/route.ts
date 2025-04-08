@@ -9,7 +9,7 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    const id = parseInt(params.id);
+    const id = parseInt(await params.id);
     if (isNaN(id)) {
       return NextResponse.json(
         { error: 'Invalid ID format' },
@@ -59,6 +59,42 @@ export async function PUT(
     return NextResponse.json(result[0]);
   } catch (error) {
     console.error('Vendor PUT Error:', error);
+    return NextResponse.json(
+      { error: 'Internal Server Error' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const id = parseInt(await params.id);
+    
+    if (isNaN(id)) {
+      return NextResponse.json(
+        { error: 'Invalid vendor ID' },
+        { status: 400 }
+      );
+    }
+
+    const vendor = await db.select()
+      .from(vendors)
+      .where(eq(vendors.id, id))
+      .execute();
+
+    if (vendor.length === 0) {
+      return NextResponse.json(
+        { error: 'Vendor not found' },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json(vendor[0]);
+  } catch (error) {
+    console.error('Vendor GET Error:', error);
     return NextResponse.json(
       { error: 'Internal Server Error' },
       { status: 500 }
