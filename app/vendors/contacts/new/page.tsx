@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { LNB } from '@/components/layout/lnb';
@@ -49,13 +49,35 @@ export default function ContactNewPage() {
     try {
       const response = await vendorsApi.searchVendors(
         vendorSearchParams.searchField,
-        vendorSearchParams.searchValue
+        vendorSearchParams.searchValue.trim()
       );
-      setSearchResults(response.data);
+      console.log('API Response:', response); // 디버깅용 로그
+      
+      // response가 이미 배열인 경우 직접 사용
+      const vendors = Array.isArray(response) ? response : response.data || [];
+      console.log('Vendors to display:', vendors); // 디버깅용 로그
+      
+      setSearchResults(vendors);
     } catch (error) {
+      console.error('사업자 검색 오류:', error);
       toast.error('사업자 검색 중 오류가 발생했습니다.');
+      setSearchResults([]);
     }
   };
+
+  // 팝업이 열릴 때 자동으로 검색 실행
+  useEffect(() => {
+    if (vendorSearchOpen) {
+      handleVendorSearch();
+    } else {
+      // 팝업이 닫힐 때 검색 파라미터 초기화
+      setVendorSearchParams({
+        searchField: 'name',
+        searchValue: '',
+      });
+      setSearchResults([]);
+    }
+  }, [vendorSearchOpen]);
 
   // 사업자 선택
   const handleVendorSelect = (vendor: IVendor) => {
@@ -250,17 +272,25 @@ export default function ContactNewPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {searchResults.map(vendor => (
-                    <TableRow
-                      key={vendor.id}
-                      className="cursor-pointer hover:bg-gray-100"
-                      onClick={() => handleVendorSelect(vendor)}
-                    >
-                      <TableCell>{vendor.code}</TableCell>
-                      <TableCell>{vendor.name}</TableCell>
-                      <TableCell>{vendor.ceo || '-'}</TableCell>
+                  {Array.isArray(searchResults) && searchResults.length > 0 ? (
+                    searchResults.map((vendor: IVendor) => (
+                      <TableRow
+                        key={vendor.id}
+                        className="cursor-pointer hover:bg-gray-100"
+                        onClick={() => handleVendorSelect(vendor)}
+                      >
+                        <TableCell>{vendor.code}</TableCell>
+                        <TableCell>{vendor.name}</TableCell>
+                        <TableCell>{vendor.ceo || '-'}</TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={3} className="text-center py-4">
+                        검색 결과가 없습니다.
+                      </TableCell>
                     </TableRow>
-                  ))}
+                  )}
                 </TableBody>
               </Table>
             </div>
