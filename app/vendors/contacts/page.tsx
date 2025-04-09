@@ -229,7 +229,7 @@ export default function ContactsPage() {
                           }}
                         />
                       </TableCell>
-                      <TableCell>{totalCount - (searchParams.page - 1) * searchParams.limit - index}</TableCell>
+                      <TableCell>{totalCount - ((searchParams.page - 1) * searchParams.limit + index) + 1}</TableCell>
                       <TableCell>
                         <button
                           className="text-blue-600 hover:underline"
