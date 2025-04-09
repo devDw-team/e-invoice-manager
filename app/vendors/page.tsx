@@ -13,6 +13,7 @@ import { toast } from 'sonner'
 import { LNB } from '@/components/layout/lnb'
 import { vendorApi } from '@/utils/api'
 import { format } from 'date-fns'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 export default function VendorsPage() {
   const router = useRouter()
@@ -112,49 +113,58 @@ export default function VendorsPage() {
         </div>
 
         {/* 검색 조건 */}
-        <div className="flex gap-4 mb-6">
-          <Select value={invoiceStatus} onValueChange={(value: any) => setInvoiceStatus(value)}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="청구서 생성 여부" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">전체</SelectItem>
-              <SelectItem value="사용">사용</SelectItem>
-              <SelectItem value="미사용">미사용</SelectItem>
-            </SelectContent>
-          </Select>
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>검색 조건</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex gap-4">
+                <Select value={invoiceStatus} onValueChange={(value: any) => setInvoiceStatus(value)}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="청구서 생성 여부" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">전체</SelectItem>
+                    <SelectItem value="사용">사용</SelectItem>
+                    <SelectItem value="미사용">미사용</SelectItem>
+                  </SelectContent>
+                </Select>
 
-          <Select value={searchField} onValueChange={(value: any) => setSearchField(value)}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="검색 기준" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="name">사업자명</SelectItem>
-              <SelectItem value="code">사업자번호</SelectItem>
-              <SelectItem value="ceo">대표자</SelectItem>
-            </SelectContent>
-          </Select>
+                <Select value={searchField} onValueChange={(value: any) => setSearchField(value)}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="검색 기준" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="name">사업자명</SelectItem>
+                    <SelectItem value="code">사업자번호</SelectItem>
+                    <SelectItem value="ceo">대표자</SelectItem>
+                  </SelectContent>
+                </Select>
 
-          <Input
-            placeholder="검색어를 입력하세요"
-            value={searchValue}
-            onChange={(e) => setSearchValue(e.target.value)}
-            className="w-[300px]"
-          />
-        </div>
+                <Input
+                  placeholder="검색어를 입력하세요"
+                  value={searchValue}
+                  onChange={(e) => setSearchValue(e.target.value)}
+                  className="w-[300px]"
+                />
+              </div>
 
-        {/* 일괄 처리 */}
-        <div className="flex gap-4 mb-6">
-          <Select onValueChange={(value: '사용' | '미사용') => handleBulkStatusUpdate(value)}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="청구서 생성 여부 변경" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="사용">사용</SelectItem>
-              <SelectItem value="미사용">미사용</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+              {/* 일괄 처리 */}
+              <div className="flex gap-4">
+                <Select onValueChange={(value: '사용' | '미사용') => handleBulkStatusUpdate(value)}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="청구서 생성 여부 변경" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="사용">사용</SelectItem>
+                    <SelectItem value="미사용">미사용</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* 목록 */}
         <div className="border rounded-lg">

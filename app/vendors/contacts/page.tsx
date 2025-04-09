@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/table';
 import { contactsApi } from '@/utils/api';
 import { IContactWithVendor } from '@/types';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default function ContactsPage() {
   const router = useRouter();
@@ -103,78 +104,87 @@ export default function ContactsPage() {
           </div>
 
           {/* 검색 영역 */}
-          <div className="flex gap-4 items-end">
-            <div className="w-40">
-              <Select
-                value={searchParams.status}
-                onValueChange={(value: typeof searchParams.status) =>
-                  setSearchParams(prev => ({ ...prev, status: value }))
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="사용여부" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">전체</SelectItem>
-                  <SelectItem value="used">사용</SelectItem>
-                  <SelectItem value="unused">미사용</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle>검색 조건</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex items-start gap-4">
+                  <div className="w-40">
+                    <Select
+                      value={searchParams.status}
+                      onValueChange={(value: typeof searchParams.status) =>
+                        setSearchParams(prev => ({ ...prev, status: value }))
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="사용여부" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">전체</SelectItem>
+                        <SelectItem value="used">사용</SelectItem>
+                        <SelectItem value="unused">미사용</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-            <div className="w-40">
-              <Select
-                value={searchParams.searchField}
-                onValueChange={(value: typeof searchParams.searchField) =>
-                  setSearchParams(prev => ({ ...prev, searchField: value }))
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="검색 조건" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="name">사업자명</SelectItem>
-                  <SelectItem value="code">사업자번호</SelectItem>
-                  <SelectItem value="branch">지점명</SelectItem>
-                  <SelectItem value="email">이메일</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+                  <div className="w-40">
+                    <Select
+                      value={searchParams.searchField}
+                      onValueChange={(value: typeof searchParams.searchField) =>
+                        setSearchParams(prev => ({ ...prev, searchField: value }))
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="검색 조건" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="name">사업자명</SelectItem>
+                        <SelectItem value="code">사업자번호</SelectItem>
+                        <SelectItem value="branch">지점명</SelectItem>
+                        <SelectItem value="email">이메일</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-            <div className="flex-1">
-              <Input
-                placeholder="검색어를 입력하세요"
-                value={searchParams.searchValue}
-                onChange={e =>
-                  setSearchParams(prev => ({ ...prev, searchValue: e.target.value }))
-                }
-                onKeyDown={e => e.key === 'Enter' && handleSearch()}
-              />
-            </div>
+                  <div className="w-80">
+                    <Input
+                      placeholder="검색어를 입력하세요"
+                      value={searchParams.searchValue}
+                      onChange={e =>
+                        setSearchParams(prev => ({ ...prev, searchValue: e.target.value }))
+                      }
+                      onKeyDown={e => e.key === 'Enter' && handleSearch()}
+                    />
+                  </div>
 
-            <Button onClick={handleSearch}>검색</Button>
-          </div>
+                  <Button onClick={handleSearch}>검색</Button>
+                </div>
 
-          {/* 일괄 처리 영역 */}
-          <div className="flex justify-between items-center">
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                onClick={() => handleBulkStatusUpdate('사용')}
-              >
-                사용
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => handleBulkStatusUpdate('미사용')}
-              >
-                미사용
-              </Button>
-            </div>
-            <div className="text-sm text-gray-500">
-              총 {totalCount}건
-            </div>
-          </div>
+                {/* 일괄 처리 영역 */}
+                <div className="flex justify-between items-center">
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => handleBulkStatusUpdate('사용')}
+                    >
+                      사용
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => handleBulkStatusUpdate('미사용')}
+                    >
+                      미사용
+                    </Button>
+                  </div>
+                  <div className="text-sm text-gray-500">
+                    총 {totalCount}건
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
           {/* 테이블 */}
           <div className="border rounded-lg">
@@ -229,7 +239,7 @@ export default function ContactsPage() {
                           }}
                         />
                       </TableCell>
-                      <TableCell>{totalCount - ((searchParams.page - 1) * searchParams.limit + index) + 1}</TableCell>
+                      <TableCell>{(searchParams.page - 1) * searchParams.limit + index + 1}</TableCell>
                       <TableCell>
                         <button
                           className="text-blue-600 hover:underline"
