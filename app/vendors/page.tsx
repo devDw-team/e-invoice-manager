@@ -21,7 +21,7 @@ export default function VendorsPage() {
   // 상태 관리
   const [vendors, setVendors] = useState<IVendor[]>([])
   const [total, setTotal] = useState(0)
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [selectedIds, setSelectedIds] = useState<number[]>([])
   
   // 검색 조건
@@ -42,10 +42,22 @@ export default function VendorsPage() {
         searchValue,
         invoiceStatus,
       })
-      setVendors(response.data)
-      setTotal(response.total)
+      
+      if (Array.isArray(response)) {
+        setVendors(response)
+        setTotal(response.length)
+      } else if (response && Array.isArray(response.data)) {
+        setVendors(response.data)
+        setTotal(response.total || 0)
+      } else {
+        setVendors([])
+        setTotal(0)
+      }
     } catch (error) {
+      console.error('Error fetching vendors:', error)
       toast.error("사업자 목록을 불러오는데 실패했습니다.")
+      setVendors([])
+      setTotal(0)
     } finally {
       setLoading(false)
     }
@@ -76,7 +88,18 @@ export default function VendorsPage() {
 
   // 검색 조건 변경 시 데이터 재조회
   useEffect(() => {
-    fetchVendors()
+    let mounted = true
+
+    const loadData = async () => {
+      if (!mounted) return
+      await fetchVendors()
+    }
+
+    loadData()
+
+    return () => {
+      mounted = false
+    }
   }, [page, limit, searchField, searchValue, invoiceStatus])
 
   return (
@@ -157,7 +180,13 @@ export default function VendorsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {vendors.length === 0 ? (
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={9} className="h-24 text-center">
+                    데이터를 불러오는 중입니다...
+                  </TableCell>
+                </TableRow>
+              ) : vendors.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
                     등록된 사업자가 없습니다.
@@ -197,7 +226,7 @@ export default function VendorsPage() {
                     <TableCell>{vendor.invoiceStatus}</TableCell>
                     <TableCell>{vendor.modifier}</TableCell>
                     <TableCell>
-                      {format(new Date(vendor.modifiedAt), 'yyyy.MM.dd HH:mm')}
+                      {vendor.modifiedAt ? format(new Date(vendor.modifiedAt), 'yyyy.MM.dd HH:mm') : '-'}
                     </TableCell>
                   </TableRow>
                 ))

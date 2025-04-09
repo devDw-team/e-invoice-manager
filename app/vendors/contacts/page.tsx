@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { LNB } from '@/components/layout/lnb';
-import { 
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -14,7 +14,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { 
+import {
   Table,
   TableBody,
   TableCell,
@@ -22,214 +22,276 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { getMockContacts } from '@/_mocks/contacts';
-import { IVendorContact } from '@/types';
+import { contactsApi } from '@/utils/api';
+import { IContactWithVendor } from '@/types';
 
 export default function ContactsPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   
   // 상태 관리
+  const [contacts, setContacts] = useState<IContactWithVendor[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
-  const [status, setStatus] = useState<'all' | 'used' | 'unused'>('all');
-  const [searchField, setSearchField] = useState<'name' | 'code' | 'branch' | 'email'>('name');
-  const [searchValue, setSearchValue] = useState('');
-  const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(50);
-
-  // 목업 데이터 조회
-  const { data: contacts, total } = getMockContacts({
-    status,
-    searchField,
-    searchValue,
-    page,
-    limit,
+  const [loading, setLoading] = useState(false);
+  
+  // 검색 조건
+  const [searchParams, setSearchParams] = useState({
+    status: 'all' as const,
+    searchField: 'name' as const,
+    searchValue: '',
+    page: 1,
+    limit: 50,
   });
 
-  // 체크박스 핸들러
-  const handleSelectAll = () => {
-    if (selectedIds.length === contacts.length) {
-      setSelectedIds([]);
-    } else {
-      setSelectedIds(contacts.map(contact => contact.id));
+  // 데이터 조회
+  const fetchContacts = async () => {
+    try {
+      setLoading(true);
+      const response = await contactsApi.getContacts(searchParams);
+      setContacts(response.data);
+      setTotalCount(response.total);
+    } catch (error) {
+      toast.error('담당자 목록을 불러오는 중 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleSelect = (id: number) => {
-    if (selectedIds.includes(id)) {
-      setSelectedIds(selectedIds.filter(selectedId => selectedId !== id));
-    } else {
-      setSelectedIds([...selectedIds, id]);
-    }
+  // 검색 조건 변경 처리
+  const handleSearch = () => {
+    setSearchParams(prev => ({ ...prev, page: 1 }));
   };
 
   // 일괄 상태 변경
-  const handleBulkStatusChange = (newStatus: '사용' | '미사용') => {
-    if (selectedIds.length === 0) {
+  const handleBulkStatusUpdate = async (status: '사용' | '미사용') => {
+    if (!selectedIds.length) {
       toast.error('선택된 항목이 없습니다.');
       return;
     }
 
-    // 실제로는 API 호출이 필요하지만, 목업에서는 토스트 메시지만 표시
-    toast.success(`${selectedIds.length}건의 상태가 변경되었습니다.`);
-    setSelectedIds([]);
+    try {
+      await contactsApi.bulkUpdateStatus({
+        contactIds: selectedIds,
+        status,
+      });
+      
+      toast.success(`${selectedIds.length}건의 상태가 변경되었습니다.`);
+      
+      fetchContacts();
+      setSelectedIds([]);
+    } catch (error) {
+      toast.error('상태 변경 중 오류가 발생했습니다.');
+    }
   };
+
+  // 초기 데이터 로딩
+  useEffect(() => {
+    fetchContacts();
+  }, [searchParams]);
 
   return (
     <div className="flex min-h-screen">
       <LNB />
-      <div className="flex-1 p-8">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-2 text-2xl font-bold">
-            <span className="text-gray-400">사업자 관리</span>
-            <span className="text-gray-400">&gt;</span>
-            <span>담당자 관리</span>
+      <div className="flex-1">
+        <div className="p-6 space-y-6">
+          {/* 페이지 타이틀 */}
+          <div className="flex items-center justify-between">
+            <h1 className="text-2xl font-bold">담당자 관리</h1>
+            <Button onClick={() => router.push('/vendors/contacts/new')}>
+              등록
+            </Button>
           </div>
-          <Button onClick={() => router.push('/vendors/contacts/new')}>등록</Button>
-        </div>
 
-        {/* 검색 영역 */}
-        <div className="flex gap-4 mb-6">
-          <Select
-            value={status}
-            onValueChange={(value: 'all' | 'used' | 'unused') => setStatus(value)}
-          >
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="사용여부 선택" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">전체</SelectItem>
-              <SelectItem value="used">사용</SelectItem>
-              <SelectItem value="unused">미사용</SelectItem>
-            </SelectContent>
-          </Select>
+          {/* 검색 영역 */}
+          <div className="flex gap-4 items-end">
+            <div className="w-40">
+              <Select
+                value={searchParams.status}
+                onValueChange={(value: typeof searchParams.status) =>
+                  setSearchParams(prev => ({ ...prev, status: value }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="사용여부" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">전체</SelectItem>
+                  <SelectItem value="used">사용</SelectItem>
+                  <SelectItem value="unused">미사용</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-          <Select
-            value={searchField}
-            onValueChange={(value: 'name' | 'code' | 'branch' | 'email') => setSearchField(value)}
-          >
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="검색 기준 선택" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="name">사업자명</SelectItem>
-              <SelectItem value="code">사업자번호</SelectItem>
-              <SelectItem value="branch">지점명</SelectItem>
-              <SelectItem value="email">이메일</SelectItem>
-            </SelectContent>
-          </Select>
+            <div className="w-40">
+              <Select
+                value={searchParams.searchField}
+                onValueChange={(value: typeof searchParams.searchField) =>
+                  setSearchParams(prev => ({ ...prev, searchField: value }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="검색 조건" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="name">사업자명</SelectItem>
+                  <SelectItem value="code">사업자번호</SelectItem>
+                  <SelectItem value="branch">지점명</SelectItem>
+                  <SelectItem value="email">이메일</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-          <Input
-            placeholder="검색어 입력"
-            value={searchValue}
-            onChange={(e) => setSearchValue(e.target.value)}
-            className="w-[300px]"
-          />
-        </div>
+            <div className="flex-1">
+              <Input
+                placeholder="검색어를 입력하세요"
+                value={searchParams.searchValue}
+                onChange={e =>
+                  setSearchParams(prev => ({ ...prev, searchValue: e.target.value }))
+                }
+                onKeyDown={e => e.key === 'Enter' && handleSearch()}
+              />
+            </div>
 
-        {/* 일괄 처리 영역 */}
-        <div className="flex justify-between items-center mb-4">
-          <div className="flex gap-2">
-            <Select onValueChange={(value: '사용' | '미사용') => handleBulkStatusChange(value)}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="상태 변경" />
+            <Button onClick={handleSearch}>검색</Button>
+          </div>
+
+          {/* 일괄 처리 영역 */}
+          <div className="flex justify-between items-center">
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => handleBulkStatusUpdate('사용')}
+              >
+                사용
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => handleBulkStatusUpdate('미사용')}
+              >
+                미사용
+              </Button>
+            </div>
+            <div className="text-sm text-gray-500">
+              총 {totalCount}건
+            </div>
+          </div>
+
+          {/* 테이블 */}
+          <div className="border rounded-lg">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-12">
+                    <Checkbox
+                      checked={selectedIds.length === contacts.length}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setSelectedIds(contacts.map(contact => contact.id));
+                        } else {
+                          setSelectedIds([]);
+                        }
+                      }}
+                    />
+                  </TableHead>
+                  <TableHead>No</TableHead>
+                  <TableHead>사업자명</TableHead>
+                  <TableHead>사업자번호</TableHead>
+                  <TableHead>지점명</TableHead>
+                  <TableHead>이메일</TableHead>
+                  <TableHead>사용여부</TableHead>
+                  <TableHead>등록자</TableHead>
+                  <TableHead>등록일</TableHead>
+                  <TableHead>수정자</TableHead>
+                  <TableHead>수정일</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {contacts.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={11} className="h-24 text-center text-muted-foreground">
+                      등록된 담당자가 없습니다.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  contacts.map((contact, index) => (
+                    <TableRow key={contact.id}>
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedIds.includes(contact.id)}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setSelectedIds(prev => [...prev, contact.id]);
+                            } else {
+                              setSelectedIds(prev =>
+                                prev.filter(id => id !== contact.id)
+                              );
+                            }
+                          }}
+                        />
+                      </TableCell>
+                      <TableCell>{totalCount - (searchParams.page - 1) * searchParams.limit - index}</TableCell>
+                      <TableCell>
+                        <button
+                          className="text-blue-600 hover:underline"
+                          onClick={() => router.push(`/vendors/contacts/${contact.id}/edit`)}
+                        >
+                          {contact.vendorName}
+                        </button>
+                      </TableCell>
+                      <TableCell>{contact.vendorCode}</TableCell>
+                      <TableCell>{contact.branch || '-'}</TableCell>
+                      <TableCell>{contact.email}</TableCell>
+                      <TableCell>{contact.status === '사용' ? '사용' : '미사용'}</TableCell>
+                      <TableCell>{contact.createdBy}</TableCell>
+                      <TableCell>
+                        {new Date(contact.createdAt).toLocaleDateString('ko-KR', {
+                          year: 'numeric',
+                          month: '2-digit',
+                          day: '2-digit',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </TableCell>
+                      <TableCell>{contact.updatedBy || '-'}</TableCell>
+                      <TableCell>
+                        {contact.updatedAt
+                          ? new Date(contact.updatedAt).toLocaleDateString('ko-KR', {
+                              year: 'numeric',
+                              month: '2-digit',
+                              day: '2-digit',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })
+                          : '-'}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+
+          {/* 페이지네이션 */}
+          <div className="flex justify-center gap-2">
+            <Select
+              value={searchParams.limit.toString()}
+              onValueChange={(value) =>
+                setSearchParams(prev => ({
+                  ...prev,
+                  limit: Number(value),
+                  page: 1,
+                }))
+              }
+            >
+              <SelectTrigger className="w-24">
+                <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="사용">사용</SelectItem>
-                <SelectItem value="미사용">미사용</SelectItem>
+                <SelectItem value="10">10개</SelectItem>
+                <SelectItem value="50">50개</SelectItem>
+                <SelectItem value="100">100개</SelectItem>
               </SelectContent>
             </Select>
-            <Button onClick={() => handleBulkStatusChange('사용')}>적용</Button>
-          </div>
-          <div className="text-sm text-gray-500">
-            총 {total}건
-          </div>
-        </div>
-
-        {/* 테이블 */}
-        <div className="border rounded-lg">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[50px]">
-                  <Checkbox
-                    checked={selectedIds.length === contacts.length}
-                    onCheckedChange={handleSelectAll}
-                  />
-                </TableHead>
-                <TableHead>No</TableHead>
-                <TableHead>사업자명</TableHead>
-                <TableHead>사업자번호</TableHead>
-                <TableHead>지점명</TableHead>
-                <TableHead>이메일</TableHead>
-                <TableHead>사용여부</TableHead>
-                <TableHead>등록자</TableHead>
-                <TableHead>등록일</TableHead>
-                <TableHead>수정자</TableHead>
-                <TableHead>수정일</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {contacts.map((contact, index) => (
-                <TableRow key={contact.id}>
-                  <TableCell>
-                    <Checkbox
-                      checked={selectedIds.includes(contact.id)}
-                      onCheckedChange={() => handleSelect(contact.id)}
-                    />
-                  </TableCell>
-                  <TableCell>{total - (page - 1) * limit - index}</TableCell>
-                  <TableCell
-                    className="cursor-pointer hover:text-blue-600"
-                    onClick={() => router.push(`/vendors/contacts/${contact.id}/edit`)}
-                  >
-                    {contact.vendorName}
-                  </TableCell>
-                  <TableCell>{contact.vendorCode}</TableCell>
-                  <TableCell>{contact.branch}</TableCell>
-                  <TableCell>{contact.email}</TableCell>
-                  <TableCell>{contact.status}</TableCell>
-                  <TableCell>{contact.createdBy}</TableCell>
-                  <TableCell>{contact.createdAt}</TableCell>
-                  <TableCell>{contact.updatedBy}</TableCell>
-                  <TableCell>{contact.updatedAt}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-
-        {/* 페이징 */}
-        <div className="flex justify-between items-center mt-4">
-          <Select
-            value={String(limit)}
-            onValueChange={(value) => setLimit(Number(value))}
-          >
-            <SelectTrigger className="w-[100px]">
-              <SelectValue placeholder="보기" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="10">10개</SelectItem>
-              <SelectItem value="50">50개</SelectItem>
-              <SelectItem value="100">100개</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setPage(page - 1)}
-              disabled={page === 1}
-            >
-              이전
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => setPage(page + 1)}
-              disabled={page * limit >= total}
-            >
-              다음
-            </Button>
           </div>
         </div>
       </div>

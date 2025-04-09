@@ -2,16 +2,19 @@ import { invoiceStatusEnum } from '@/db/schema';
 
 export interface IVendor {
   id: number;
+  invoiceStatus: '사용' | '미사용';
   name: string;
   code: string;
-  ceo?: string;
-  address?: string;
-  businessType?: string;
-  item?: string;
-  invoiceStatus: typeof invoiceStatusEnum.enumValues[number];
+  ceo: string;
+  businessType: string;
+  item: string;
+  address: string;
   modifier: string;
-  modifiedAt: Date;
-  createdAt: Date;
+  modifiedAt: string;
+  createdAt: string;
+  createdBy: string;
+  updatedAt?: string;
+  updatedBy?: string;
 }
 
 export interface IVendorCreate {
@@ -204,14 +207,6 @@ export interface IInvoiceFileResponse {
   limit: number;
 }
 
-export interface IVendor {
-  id: number;
-  vendorCode: string;
-  vendorName: string;
-  representativeName: string;
-  status: string;
-}
-
 export interface IPaginationResponse<T> {
   data: T[];
   total: number;
@@ -224,4 +219,80 @@ export interface ISearchParams {
   searchValue: string;
   page: number;
   limit: number;
+}
+
+// Contact 관련 타입 정의
+export interface IContact {
+  id: number;
+  vendorId: number;
+  branch: string | null;
+  email: string;
+  status: '사용' | '미사용';
+  createdBy: string;
+  createdAt: Date;
+  updatedBy: string | null;
+  updatedAt: Date;
+}
+
+export interface IContactWithVendor extends IContact {
+  vendorName: string;
+  vendorCode: string;
+}
+
+// API 요청/응답 타입
+export interface IContactSearchParams {
+  status?: 'all' | 'used' | 'unused';
+  searchField?: 'name' | 'code' | 'branch' | 'email';
+  searchValue?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface IContactResponse {
+  data: IContactWithVendor[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export interface IVendorSearchParams {
+  searchField: 'name' | 'code';
+  searchValue: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface IVendorResponse {
+  data: IVendor[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export interface IContactCreateBody {
+  vendorId: number;
+  branch?: string;
+  email: string;
+  status: '사용' | '미사용';
+  createdBy: string;
+}
+
+export interface IContactUpdateBody {
+  id: number;
+  vendorId: number;
+  branch?: string;
+  email: string;
+  status: '사용' | '미사용';
+  updatedBy: string;
+}
+
+export interface IBulkStatusUpdateBody {
+  contactIds: number[];
+  status: '사용' | '미사용';
+}
+
+export interface IApiResponse<T> {
+  message?: string;
+  data?: T;
+  error?: string;
 } 

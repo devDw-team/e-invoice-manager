@@ -1,63 +1,40 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
 import { vendors } from '@/db/schema';
-import { desc, eq, ilike, and, or } from 'drizzle-orm';
+import { eq, like } from 'drizzle-orm';
 import { IVendorCreate, IPaginationQuery } from '@/types';
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const query: IPaginationQuery = {
-      page: Number(searchParams.get('page')) || 1,
-      limit: Number(searchParams.get('limit')) || 50,
-      searchField: (searchParams.get('searchField') as IPaginationQuery['searchField']) || 'name',
-      searchValue: searchParams.get('searchValue') || '',
-      invoiceStatus: (searchParams.get('invoiceStatus') as IPaginationQuery['invoiceStatus']) || 'all'
-    };
+    const searchField = searchParams.get('searchField') as 'name' | 'code';
+    const searchValue = searchParams.get('searchValue') || '';
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '10');
+    const offset = (page - 1) * limit;
 
-    let conditions = [];
-    
-    // 검색 조건 추가
-    if (query.searchValue) {
-      if (query.searchField === 'name') {
-        conditions.push(ilike(vendors.name, `%${query.searchValue}%`));
-      } else if (query.searchField === 'code') {
-        conditions.push(ilike(vendors.code, `%${query.searchValue}%`));
-      } else if (query.searchField === 'ceo') {
-        conditions.push(ilike(vendors.ceo, `%${query.searchValue}%`));
+    const query = db
+      .select()
+      .from(vendors)
+      .$dynamic();
+
+    if (searchValue) {
+      if (searchField === 'name') {
+        query.where(like(vendors.name, `%${searchValue}%`));
+      } else if (searchField === 'code') {
+        query.where(like(vendors.code, `%${searchValue}%`));
       }
     }
 
-    // 청구서 생성 여부 필터
-    if (query.invoiceStatus && query.invoiceStatus !== 'all') {
-      conditions.push(eq(vendors.invoiceStatus, query.invoiceStatus));
-    }
+    const results = await query
+      .limit(limit)
+      .offset(offset);
 
-    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
-
-    // 전체 개수 조회
-    const total = await db.select({ count: vendors.id }).from(vendors)
-      .where(whereClause)
-      .execute();
-
-    // 페이지네이션 적용하여 데이터 조회
-    const data = await db.select().from(vendors)
-      .where(whereClause)
-      .orderBy(desc(vendors.id))
-      .limit(query.limit || 50)
-      .offset(((query.page || 1) - 1) * (query.limit || 50))
-      .execute();
-
-    return NextResponse.json({
-      data,
-      total: total[0]?.count || 0,
-      page: query.page || 1,
-      limit: query.limit || 50
-    });
+    return NextResponse.json(results);
   } catch (error) {
-    console.error('Vendors GET Error:', error);
+    console.error('Error searching vendors:', error);
     return NextResponse.json(
-      { error: 'Internal Server Error' },
+      { error: 'Failed to search vendors' },
       { status: 500 }
     );
   }
